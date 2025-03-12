@@ -1,16 +1,15 @@
 import streamlit as st
 import pandas as pd
 import cv2
-from pyzbar.pyzbar import decode
+from zbarlight import scan_codes
 from PIL import Image
 import numpy as np
 import os
 
 def decode_barcode(image):
     """ Decodifica códigos de barras o QR en una imagen. """
-    decoded_objects = decode(image)
-    codes = [obj.data.decode('utf-8') for obj in decoded_objects]
-    return codes
+    codes = scan_codes('qrcode', Image.fromarray(image))
+    return [code.decode('utf-8') for code in codes] if codes else []
 
 def save_to_excel(data, file_path='codigos.xlsx'):
     """ Guarda los datos en un archivo Excel evitando la notación científica. """
