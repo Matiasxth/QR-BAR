@@ -3,5 +3,5 @@ opencv-python-headless
 pandas
 numpy
 Pillow
-pyzbar
+zbarlight
 openpyxl
