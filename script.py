@@ -1,54 +1,45 @@
 import streamlit as st
-import pandas as pd
 import cv2
+import numpy as np
 from pyzbar.pyzbar import decode
 from PIL import Image
-import numpy as np
-import os
 
-def decode_barcode(image):
-    """ Decodifica códigos de barras o QR en una imagen. """
-    decoded_objects = decode(image)
-    codes = [obj.data.decode('utf-8') for obj in decoded_objects]
-    return codes
+def read_barcodes(image):
+    """Detecta y lee códigos de barras en una imagen."""
+    img = np.array(image.convert('RGB'))
+    gray = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
+    barcodes = decode(gray)
+    results = []
+    for barcode in barcodes:
+        barcode_data = barcode.data.decode('utf-8')
+        barcode_type = barcode.type
+        (x, y, w, h) = barcode.rect
+        cv2.rectangle(img, (x, y), (x + w, y + h), (0, 255, 0), 2)
+        results.append((barcode_data, barcode_type))
+    return img, results
 
-def save_to_excel(data, file_path='codigos.xlsx'):
-    """ Guarda los datos en un archivo Excel evitando la notación científica. """
-    df = pd.DataFrame({'Código': data})
-    df['Código'] = df['Código'].astype(str)  # Asegurar que se almacena como texto
-    df.to_excel(file_path, index=False, engine='openpyxl')
+# Interfaz en Streamlit
+st.title("📷 Lector de Códigos de Barras")
+st.write("Sube una imagen o usa la cámara para escanear un código de barras.")
 
-def main():
-    st.title("Escáner de Códigos de Barras y QR")
-    st.write("Usa la cámara para escanear códigos y guardarlos en un archivo Excel.")
+# Opción para subir imagen
+uploaded_file = st.file_uploader("Sube una imagen", type=["jpg", "png", "jpeg"])
+if uploaded_file:
+    image = Image.open(uploaded_file)
+    st.image(image, caption="Imagen subida", use_column_width=True)
+    processed_img, results = read_barcodes(image)
+    st.image(processed_img, caption="Imagen procesada", use_column_width=True)
     
-    scanned_codes = []
-    
-    uploaded_file = st.file_uploader("Sube una imagen para escanear", type=["png", "jpg", "jpeg"])
-    if uploaded_file:
-        image = Image.open(uploaded_file)
-        image = cv2.cvtColor(np.array(image), cv2.COLOR_RGB2BGR)
-        codes = decode_barcode(image)
-        if codes:
-            st.success(f"Códigos escaneados: {', '.join(codes)}")
-            scanned_codes.extend(codes)
-        else:
-            st.warning("No se detectaron códigos en la imagen.")
-    
-    if 'codes' not in st.session_state:
-        st.session_state.codes = []
-    
-    if scanned_codes:
-        st.session_state.codes.extend(scanned_codes)
-    
-    if st.session_state.codes:
-        st.write("Códigos escaneados:")
-        st.table(pd.DataFrame({'Código': st.session_state.codes}))
-    
-    if st.button("Guardar en Excel"):
-        save_to_excel(st.session_state.codes)
-        st.success("Códigos guardados en codigos.xlsx")
-        st.session_state.codes = []
+    if results:
+        st.success("Códigos detectados:")
+        for data, btype in results:
+            st.write(f"**Código:** {data} | **Tipo:** {btype}")
+    else:
+        st.warning("No se detectaron códigos de barras en la imagen.")
 
-if __name__ == "__main__":
-    main()
+# Opción para usar la cámara
+if st.button("📸 Abrir cámara para escanear"):
+    st.warning("La captura con cámara requiere integraciones adicionales en Streamlit.")
+    st.write("Puedes probar esta funcionalidad en local con OpenCV y el uso de la webcam.")
+
+st.write("💡 Sube tu código a GitHub y ejecútalo en [Streamlit Community Cloud](https://share.streamlit.io/).")
